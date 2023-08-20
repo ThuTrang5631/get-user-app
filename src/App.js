@@ -1,73 +1,93 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import Card from "./Component/Card";
 
-const dataStore = {
-  prev: [],
-  next: [],
-};
+let dataLists = {};
 
 function App() {
-  const [usersList, setUsersList] = useState([]);
-  const [skip, setSkip] = useState(0);
-  const [total, setTotal] = useState(0);
+  const [totalUsers, setTotalUsers] = useState(0);
+  // const [isFetch, setIsFetch] = useState(false);
+  const maxPage = totalUsers / 20;
+  const [page, setPage] = useState(undefined);
+  const [imgsLoaded, setImgsLoaded] = useState(false);
+  // let page = 1;
+  // let users = {};
 
-  const fetchDataPrev = async () => {
+  const fetchData = async () => {
+    console.log("fetchData");
+
     try {
-      let res;
-      if (skip === 0) {
-        res = await fetch(`https://dummyjson.com/users?limit=20`);
-      } else {
-        res = await fetch(
-          `https://dummyjson.com/users?limit=20&skip=${skip - 20}`
-        );
-      }
+      const res = await fetch(`https://dummyjson.com/users?limit=20`);
       const data = await res.json();
-      setTotal(data?.total);
-      if (usersList.length === 0) {
-        setUsersList(data?.users);
-      } else {
-        dataStore.prev = data?.users;
-      }
+      setTotalUsers(data?.total);
+      // setUsersList(data?.users);
+      dataLists = { 0: data?.users };
+      setPage(0);
     } catch (error) {
       console.log(error);
     }
   };
 
-  const fetchDataNext = async () => {
+  console.log("dataLists", dataLists);
+
+  const fetchDataStore = async () => {
+    console.log("fetchDataStore");
     try {
       const res = await fetch(
-        `https://dummyjson.com/users?limit=20&skip=${skip + 20}`
+        `https://dummyjson.com/users?limit=20&skip=${20 * (page + 1)}`
       );
       const data = await res.json();
-      dataStore.next = data?.users;
+      dataLists = { ...dataLists, [page + 1]: data?.users };
     } catch (error) {
       console.log(error);
     }
   };
 
   const handleClickPrev = () => {
-    setUsersList(dataStore.prev);
-    setSkip(skip - 20);
+    console.log("pageclickprev", page);
+    setPage(page - 1);
+    // page = page - 1;
   };
 
   const handleClickNext = () => {
-    setUsersList(dataStore.next);
-    setSkip(skip + 20);
+    // page = page + 1;
+    setPage(page + 1);
+    console.log("pageClickNext", page);
   };
 
+  // const loadImage = (image) => {
+  //   return new Promise((resolve, reject) => {
+  //     const loadImg = new Image();
+  //     loadImg.src = image.url;
+  //     loadImg.onload = () => {
+  //       setTimeout(() => {
+  //         resolve(image.url);
+  //       }, 2000);
+  //     };
+  //   });
+  // };
+
+  // useEffect(() => {
+  //   fetchData();
+  // }, []);
+
   useEffect(() => {
-    fetchDataPrev();
-    fetchDataNext();
-  }, [skip]);
+    if (page !== undefined) {
+      fetchDataStore();
+    }
+  }, [page]);
+
+  useLayoutEffect(() => {
+    fetchData();
+  }, []);
 
   return (
     <div className="app">
       <div className="contain-btns">
-        <button disabled={skip === 0} className="btn" onClick={handleClickPrev}>
+        <button disabled={page === 0} className="btn" onClick={handleClickPrev}>
           Prev
         </button>
         <button
-          disabled={skip === total - 20}
+          disabled={page === maxPage - 1}
           className="btn"
           onClick={handleClickNext}
         >
@@ -75,7 +95,7 @@ function App() {
         </button>
       </div>
       <div className="contain-card">
-        {usersList?.map((item) => {
+        {dataLists?.[page]?.map((item) => {
           return (
             <Card
               key={item?.id}
