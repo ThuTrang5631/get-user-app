@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import Card from "./Component/Card";
 
 let dataLists = {};
@@ -27,6 +27,7 @@ function App() {
 
   const fetchData = async (isFirst = false) => {
     setDisabled("disabled");
+
     const url = isFirst
       ? "https://dummyjson.com/users?limit=20"
       : `https://dummyjson.com/users?limit=20&skip=${20 * (page + 1)}`;
