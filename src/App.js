@@ -2,16 +2,14 @@ import { useEffect, useState, useRef } from "react";
 import Card from "./Component/Card";
 
 let dataLists = {};
+let page = 0;
 
 function App() {
   const [totalUsers, setTotalUsers] = useState(0);
   const maxPage = totalUsers / 20;
   const [disabled, setDisabled] = useState("");
   const [finishFetchFirst, setFinishFetchFirst] = useState(false);
-  const page = useRef(0);
-  const nextPage = page.current + 1;
-  const prevPage = page.current - 1;
-  const [pageCurrent, setPageCurrent] = useState(page.current);
+  const [pageCurrent, setPageCurrent] = useState(page);
 
   const loadImage = (image) => {
     return new Promise((resolve, reject) => {
@@ -27,55 +25,49 @@ function App() {
     });
   };
 
-  const fetchData = async () => {
+  const fetchData = async (isFirst = false) => {
+    setDisabled("disabled");
+    const url = isFirst
+      ? "https://dummyjson.com/users?limit=20"
+      : `https://dummyjson.com/users?limit=20&skip=${20 * (page + 1)}`;
+
     try {
-      const res = await fetch(`https://dummyjson.com/users?limit=20`);
+      const res = await fetch(url);
       const data = await res.json();
       setTotalUsers(data?.total);
-      dataLists = { 0: data?.users };
+      dataLists = isFirst
+        ? { 0: data?.users }
+        : { ...dataLists, [page + 1]: data?.users };
       setFinishFetchFirst(true);
+      setDisabled("");
     } catch (error) {
       console.log(error);
+      setDisabled("");
     }
   };
 
-  const fetchDataStore = async () => {
-    setDisabled("disabled");
-
-    try {
-      const res = await fetch(
-        `https://dummyjson.com/users?limit=20&skip=${20 * (page.current + 1)}`
-      );
-      const data = await res.json();
-      dataLists = { ...dataLists, [page.current + 1]: data?.users };
-      setDisabled("");
-    } catch (error) {
-      console.log(error);
-      setDisabled("");
-    }
+  const handleCurrentPage = () => {
+    Promise.all(dataLists?.[pageCurrent]?.map((data) => loadImage(data?.image)))
+      .then(() => {
+        fetchData();
+      })
+      .catch((err) => console.log("Failed to load images", err));
   };
 
   const handleClickPrev = () => {
-    page.current = prevPage;
-    setPageCurrent(prevPage);
-    console.log("pageclickprev", page);
+    page = page - 1;
+    console.log("pageClickPrev", page);
+    setPageCurrent(page);
   };
 
   const handleClickNext = () => {
-    page.current = nextPage;
+    page = page + 1;
     console.log("pageClickNext", page);
-
     if (Object.keys(dataLists).length !== maxPage) {
-      Promise.all(
-        dataLists?.[pageCurrent]?.map((data) => loadImage(data?.image))
-      )
-        .then(() => {
-          fetchDataStore();
-        })
-        .catch((err) => console.log("Failed to load images", err));
+      handleCurrentPage();
     }
 
-    setPageCurrent(nextPage);
+    setPageCurrent(page);
 
     if (Object.keys(dataLists).length === maxPage) {
       setDisabled(false);
@@ -84,22 +76,12 @@ function App() {
 
   useEffect(() => {
     if (!finishFetchFirst) {
-      fetchData();
+      fetchData(true);
     } else {
-      console.log("dataLists?.[page]", dataLists?.[page.current]);
-      Promise.all(
-        dataLists?.[pageCurrent]?.map((data) => loadImage(data?.image))
-      )
-        .then(() => {
-          fetchDataStore();
-        })
-        .catch((err) => console.log("Failed to load images", err));
+      console.log("dataLists?.[page]", dataLists?.[pageCurrent]);
+      handleCurrentPage();
     }
   }, [finishFetchFirst]);
-
-  console.log("page", page);
-  console.log("dataList", dataLists);
-  console.log("data list", dataLists?.[pageCurrent]);
 
   return (
     <div className="app">
